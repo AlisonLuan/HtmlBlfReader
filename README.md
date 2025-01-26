@@ -1,16 +1,17 @@
 # HtmlBlfReader
 
-HtmlBlfReader is a JavaScript-based tool designed to parse binary log files (BLF) in the browser. It reads binary data, unpacks various data structures, and supports displaying the parsed output in a human-readable format using JavaScript and HTML.
+HtmlBlfReader is a JavaScript-based tool designed to parse and display binary log files (BLF) directly in the browser. It provides real-time parsing and visualization of CAN messages, log containers, and related binary data structures.
 
 ---
 
 ## Features
 
-- **File Loading**: Load and parse BLF files directly in the browser.
-- **Binary Data Parsing**: Supports parsing of binary-encoded CAN messages and object structures.
-- **Compression Handling**: Handles uncompressed and ZLIB-compressed data blocks.
-- **Real-Time Output**: Displays parsed data in a formatted way on the web page.
-- **Cross-Browser Compatibility**: Works with modern browsers that support `FileReader` and `DataView`.
+- **File Loading**: Upload `.blf` files directly in the browser for parsing.
+- **Binary Data Parsing**: Unpacks structured binary data such as CAN messages and log containers.
+- **Real-Time Output**: Displays parsed data in a dynamic HTML table with readable timestamps and message details.
+- **Compression Handling**: Supports ZLIB-compressed and uncompressed binary containers using the `pako` library.
+- **Cross-Browser Compatibility**: Utilizes modern web APIs like `FileReader` and `DataView` for a seamless experience.
+- **Responsive Design**: Presents parsed data in a clear and organized table format.
 
 ---
 
@@ -25,7 +26,7 @@ HtmlBlfReader is a JavaScript-based tool designed to parse binary log files (BLF
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/HtmlBlfReader.git
+   git clone https://github.com/tioali/HtmlBlfReader.git
    cd HtmlBlfReader
    ```
 
@@ -37,8 +38,8 @@ HtmlBlfReader is a JavaScript-based tool designed to parse binary log files (BLF
 
 ```
 HtmlBlfReader/
-├── index.html        # Main HTML file with the UI structure
-├── script.js         # Main JavaScript file for logic and parsing
+├── index.html        # Main HTML file with the UI structure and event listeners
+├── script.js         # Main JavaScript file for parsing logic
 ├── README.md         # Project documentation
 ```
 
@@ -47,44 +48,36 @@ HtmlBlfReader/
 ## Usage
 
 1. Open `index.html` in your browser.
-2. Use the **"Load"** button to select a `.blf` file.
-3. Click **"Show Content"** to parse the file and display the output.
+2. Use the **"Load .BLF File"** button to select a `.blf` file.
+3. The parsed data will be displayed in the dynamic table with details such as timestamps, arbitration IDs, and message data.
 
-### Output
+### Example Output
 
-The parsed data will be displayed in the output section of the page. For instance:
+Parsed data will be displayed in a table like this:
 
-```
-Loaded file: example.blf
-
-Timestamp: 1737813045.5
-Arbitration ID: 12345
-Is Extended ID: true
-Is Remote Frame: false
-DLC: 8
-Data: 12, 34, 56, 78
-Channel: 0
-```
+| Timestamp                    | ID          | Extended | Data (8-byte array)       |
+|------------------------------|-------------|----------|---------------------------|
+| Date: 2025-01-25, Time: 14:05:22 | 0x1FFFFFFF | Yes      | 12 34 56 78 90 AB CD EF  |
 
 ---
 
-## Key Functions
+## Key Features
 
 ### Parsing Functions
-- **`FILE_HEADER_STRUCTunpack`**: Parses the BLF file header.
-- **`OBJ_HEADER_BASE_STRUCTunpack`**: Parses object header structures.
-- **`parseData`**: Iterates over binary data and yields parsed objects.
-- **`LOG_CONTAINER_STRUCTunpack`**: Handles log container unpacking and decompression.
+- **`parseBLF`**: Main function for reading and parsing `.blf` files.
+- **`parseData`**: Iterates over binary data and yields parsed objects like CAN messages.
+- **`LOG_CONTAINER_STRUCTunpack`**: Handles log container unpacking and supports ZLIB decompression.
 
 ### Helper Functions
-- **`findLOBJ`**: Finds the "LOBJ" signature in the binary data.
-- **`systemTimeToTimestamp`**: Converts system time arrays to timestamps.
+- **`systemTimeToTimestamp`**: Converts system time arrays to UNIX timestamps.
+- **`findLOBJ`**: Finds the "LOBJ" signature in binary data for object detection.
 
 ---
 
 ## Contributing
 
 Contributions are welcome! If you have ideas for improvements or new features:
+
 1. Fork the repository.
 2. Create a feature branch:
    ```bash
@@ -113,4 +106,5 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 ## Contact
 
-For questions or suggestions, reach out via [GitHub Issues](https://github.com/yourusername/HtmlBlfReader/issues).
+- **Author**: tioali@gmai..com
+- **GitHub**: [HtmlBlfReader](https://github.com/tioali/HtmlBlfReader)
