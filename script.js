@@ -28,26 +28,6 @@ const DIR = 0x1;
 const TIME_TEN_MICS = 0x00000001;
 const TIME_ONE_NANS = 0x00000002;
 
-// Load the file and initialize the FileReader
-document.getElementById('loadButton').addEventListener('click', () => {
-    const fileInput = document.getElementById('fileInput');
-
-    // Check if a file is selected
-    if (fileInput.files.length === 0) {
-        alert('Please select a file.');
-        return;
-    }
-
-    // Initialize the file and FileReader
-    file = fileInput.files[0];
-    fileReader = new FileReader();
-    currentPosition = 0;
-
-    // Enable the "Show Content" button and update the output
-    document.getElementById('showContentButton').disabled = false;
-    document.getElementById('output').textContent = `Loaded file: ${file.name}\n`;
-});
-
 /**
  * Unpacks the OBJ_HEADER_BASE_STRUCT from a DataView.
  * @param {DataView} dataView - The binary data as a DataView.
@@ -651,9 +631,6 @@ function* parseData(data) {
                 console.warn(`Unknown object type (${objType})`);
         }
 
-        // Append the formatted message to the output
-        document.getElementById('output').textContent += formattedMessage + '\n';
-
         pos = nextPos;
     }
 }
@@ -680,84 +657,63 @@ function findLOBJ(data, start, end) {
     throw new Error("LOBJ signature not found");
 }
 
-document.getElementById('showContentButton').addEventListener('click', () => {
-    // Read the size of FILE_HEADER_STRUCT
-    file.slice(0, 72).arrayBuffer().then(arrayBuffer => {
-        const data = new DataView(arrayBuffer);
+async function parseBLF(file) {
+    try {
+        const parsedMessages = []; // Initialize an array to store parsed messages
 
-        // Unpack the data using FILE_HEADER_STRUCTunpack
+        const headerBuffer = await file.slice(0, 72).arrayBuffer();
+        const data = new DataView(headerBuffer);
+
         const header = FILE_HEADER_STRUCTunpack(data);
 
-        // Check the signature
         if (header.signature !== "LOGG") {
             console.error("Error: Invalid file signature. Expected 'LOGG', but got:", header.signature);
-            return; // Stop further processing
+            return parsedMessages; // Return an empty array
         }
 
         console.log(header);
         globalstartTimestamp = systemTimeToTimestamp(header.timeStart);
 
-        // Read the rest of the header
-        file.slice(72, header.headerSize).arrayBuffer().then(arrayBuffer => {
-            console.log(arrayBuffer);
+        const headerExtensionBuffer = await file.slice(72, header.headerSize).arrayBuffer();
+        console.log(headerExtensionBuffer);
 
-            // Read the OBJ_HEADER_BASE_STRUCT
-            file.slice(header.headerSize, header.headerSize + 16).arrayBuffer().then(arrayBuffer => {
-                const data = new DataView(arrayBuffer);
-                const object = OBJ_HEADER_BASE_STRUCTunpack(data);
+        const objectBuffer = await file.slice(header.headerSize, header.headerSize + 16).arrayBuffer();
+        const objectData = new DataView(objectBuffer);
+        const object = OBJ_HEADER_BASE_STRUCTunpack(objectData);
 
-                // Check the signature
-                if (object.signature !== "LOBJ") {
-                    console.error("Error: Invalid object signature. Expected 'LOBJ', but got:", object.signature);
-                    return; // Stop further processing
+        if (object.signature !== "LOBJ") {
+            console.error("Error: Invalid object signature. Expected 'LOBJ', but got:", object.signature);
+            return parsedMessages; // Return an empty array
+        }
+
+        console.log(object);
+
+        const objectContentBuffer = await file.slice(header.headerSize + 16, header.headerSize + 16 + (object.objectSize - 16)).arrayBuffer();
+        let dataView = new DataView(objectContentBuffer);
+
+        if (object.objectType === LOG_CONTAINER) {
+            const objData = LOG_CONTAINER_STRUCTunpack(dataView);
+            console.log(objData);
+
+            let containerData = new Uint8Array(dataView.buffer, 16);
+            if (objData.compressionMethod === ZLIB_DEFLATE) {
+                try {
+                    containerData = pako.inflate(containerData);
+                } catch (error) {
+                    console.error("Error decompressing data:", error);
+                    return parsedMessages; // Return an empty array
                 }
+            }
 
-                console.log(object);
+            const generator = parseData(containerData);
+            for (const message of generator) {
+                parsedMessages.push(message); // Collect parsed messages
+            }
+        }
 
-                file.slice(header.headerSize + 16, header.headerSize + 16 + (object.objectSize - 16))
-                    .arrayBuffer()
-                    .then(arrayBuffer => {
-                        let data = new DataView(arrayBuffer);
-
-                        // Check if object is LOG_CONTAINER
-                        if (object.objectType === LOG_CONTAINER) {
-                            const obj_data = LOG_CONTAINER_STRUCTunpack(data);
-                            console.log(obj_data);
-
-                            let container_data = new Uint8Array(data.buffer, 16);
-                            console.log(container_data);
-
-                            // NO_COMPRESSION
-                            if (obj_data.compressionMethod === NO_COMPRESSION) {
-                                data = container_data;
-                            } else if (obj_data.compressionMethod === ZLIB_DEFLATE) {
-                                try {
-                                    // Decompress container_data using pako
-                                    data = pako.inflate(container_data);
-                                    console.log("Decompressed Data:", new TextDecoder().decode(data)); // Decode if data is text
-                                } catch (error) {
-                                    console.error("Error decompressing data:", error);
-                                }
-                            } else {
-                                console.log("Unknown compression method:", obj_data.compressionMethod);
-                            }
-
-                            const generator = parseData(data);
-                            for (const message of generator) {
-                                console.log(message);
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error reading file:", error);
-                    });
-            }).catch(error => {
-                console.error("Error reading file:", error);
-            });
-        }).catch(error => {
-            console.error("Error reading file:", error);
-        });
-    }).catch(error => {
-        console.error("Error reading file:", error);
-    });
-});
+        return parsedMessages; // Return the array of parsed messages
+    } catch (error) {
+        console.error("Error processing the file:", error);
+        return []; // Return an empty array on error
+    }
+}
