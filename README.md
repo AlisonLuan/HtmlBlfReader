@@ -106,5 +106,5 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 ## Contact
 
-- **Author**: tioali@gmai..com
+- **Author**: tioali@gmail.com
 - **GitHub**: [HtmlBlfReader](https://github.com/tioali/HtmlBlfReader)
